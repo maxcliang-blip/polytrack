@@ -2,6 +2,9 @@ export class InputManager {
   keys: Set<string> = new Set();
   private justPressedKeys: Set<string> = new Set();
 
+  mouseX = 0;
+  mouseY = 0;
+
   constructor() {
     window.addEventListener("keydown", (e) => {
       if (!this.keys.has(e.code)) {
@@ -12,6 +15,11 @@ export class InputManager {
 
     window.addEventListener("keyup", (e) => {
       this.keys.delete(e.code);
+    });
+
+    window.addEventListener("mousemove", (e) => {
+      this.mouseX = e.clientX;
+      this.mouseY = e.clientY;
     });
   }
 
@@ -41,5 +49,8 @@ export class InputManager {
   }
   get restart(): boolean {
     return this.wasPressed("KeyR") || this.wasPressed("Enter");
+  }
+  get toggleMode(): boolean {
+    return this.wasPressed("Tab");
   }
 }

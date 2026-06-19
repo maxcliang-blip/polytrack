@@ -10,10 +10,10 @@ const MAX_BRAKE = 50;
 const MAX_STEER = 0.5;
 
 const wheelPositions = [
-  { x: -0.7, z: -1.2 }, // front-left
-  { x: 0.7, z: -1.2 },  // front-right
-  { x: -0.7, z: 1.2 },  // rear-left
-  { x: 0.7, z: 1.2 },   // rear-right
+  { x: -0.7, z: -1.2 },
+  { x: 0.7, z: -1.2 },
+  { x: -0.7, z: 1.2 },
+  { x: 0.7, z: 1.2 },
 ];
 
 export class Car {
@@ -23,13 +23,14 @@ export class Car {
   private wheelMeshes: THREE.Mesh[] = [];
   private input: InputManager;
   private steeringAngle = 0;
+  private frozen = false;
+  isRunning = false;
 
   constructor(scene: THREE.Scene, world: CANNON.World, input: InputManager) {
     this.input = input;
 
     this.mesh = new THREE.Group();
 
-    // Chassis
     const chassisGeo = new THREE.BoxGeometry(1.8, 0.3, 2.8);
     const chassisMat = new THREE.MeshStandardMaterial({
       color: 0xe63946,
@@ -41,7 +42,6 @@ export class Car {
     chassis.castShadow = true;
     this.mesh.add(chassis);
 
-    // Cabin
     const cabinGeo = new THREE.BoxGeometry(1.4, 0.3, 1.4);
     const cabinMat = new THREE.MeshStandardMaterial({
       color: 0x1d3557,
@@ -53,7 +53,6 @@ export class Car {
     cabin.castShadow = true;
     this.mesh.add(cabin);
 
-    // Chassis physics body
     this.chassisBody = new CANNON.Body({ mass: CHASSIS_MASS });
     this.chassisBody.addShape(
       new CANNON.Box(new CANNON.Vec3(0.9, 0.15, 1.4))
@@ -61,7 +60,6 @@ export class Car {
     this.chassisBody.position.set(0, 1, 0);
     world.addBody(this.chassisBody);
 
-    // Raycast vehicle
     this.vehicle = new CANNON.RaycastVehicle({
       chassisBody: this.chassisBody,
       indexRightAxis: 1,
@@ -94,12 +92,8 @@ export class Car {
 
     this.vehicle.addToWorld(world);
 
-    // Wheel meshes
     const wheelGeo = new THREE.CylinderGeometry(
-      WHEEL_RADIUS,
-      WHEEL_RADIUS,
-      WHEEL_WIDTH,
-      12
+      WHEEL_RADIUS, WHEEL_RADIUS, WHEEL_WIDTH, 12
     );
     const wheelMat = new THREE.MeshStandardMaterial({
       color: 0x222222,
@@ -117,7 +111,19 @@ export class Car {
     scene.add(this.mesh);
   }
 
+  freeze() {
+    this.frozen = true;
+    this.chassisBody.type = CANNON.Body.KINEMATIC;
+  }
+
+  unfreeze() {
+    this.frozen = false;
+    this.chassisBody.type = CANNON.Body.DYNAMIC;
+  }
+
   update(dt: number) {
+    if (this.frozen) return;
+
     const engineForce = this.input.forward ? MAX_FORCE : 0;
     const brakeForce = this.input.backward ? MAX_BRAKE : 0;
     const steerInput = this.input.left ? 1 : this.input.right ? -1 : 0;
@@ -126,7 +132,6 @@ export class Car {
     this.steeringAngle += (targetSteer - this.steeringAngle) * Math.min(1, 10 * dt);
 
     const wheels = this.vehicle.wheelInfos;
-    // Front wheels steer
     wheels[0].steering = this.steeringAngle;
     wheels[1].steering = this.steeringAngle;
 
@@ -147,15 +152,13 @@ export class Car {
       m.quaternion.copy(t.quaternion as unknown as THREE.Quaternion);
     }
 
-    // Sync chassis mesh
-    this.mesh.position.copy(
-      this.chassisBody.position as unknown as THREE.Vector3
-    );
-    this.mesh.quaternion.copy(
-      this.chassisBody.quaternion as unknown as THREE.Quaternion
-    );
+    this.mesh.position.copy(this.chassisBody.position as unknown as THREE.Vector3);
+    this.mesh.quaternion.copy(this.chassisBody.quaternion as unknown as THREE.Quaternion);
 
-    // Restart
+    // Track if car is moving
+    const vel = this.chassisBody.velocity;
+    this.isRunning = Math.sqrt(vel.x * vel.x + vel.y * vel.y + vel.z * vel.z) > 0.5;
+
     if (this.input.restart) {
       this.reset();
     }
@@ -165,9 +168,7 @@ export class Car {
     this.chassisBody.position.set(0, 1.5, 0);
     this.chassisBody.velocity.setZero();
     this.chassisBody.angularVelocity.setZero();
-    this.chassisBody.quaternion.setFromAxisAngle(
-      new CANNON.Vec3(0, 0, 1),
-      0
-    );
+    this.chassisBody.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 0, 1), 0);
+    this.isRunning = false;
   }
 }
