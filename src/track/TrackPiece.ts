@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import * as CANNON from "cannon-es";
+import { isLowEnd } from "../Config";
 
 export type PieceType = "straight" | "turn" | "start" | "finish";
 
@@ -72,13 +73,15 @@ export class TrackPiece {
       ROAD_THICKNESS,
       ROAD_LENGTH
     );
-    const mat = new THREE.MeshStandardMaterial({
-      color: color ?? (this.data.type === "start" ? 0x444444 : 0x555555),
-      roughness: 0.8,
-    });
+    const mat = isLowEnd
+      ? new THREE.MeshLambertMaterial({ color: color ?? (this.data.type === "start" ? 0x444444 : 0x555555) })
+      : new THREE.MeshStandardMaterial({
+          color: color ?? (this.data.type === "start" ? 0x444444 : 0x555555),
+          roughness: 0.8,
+        });
     const road = new THREE.Mesh(geo, mat);
     road.position.y = ROAD_THICKNESS / 2;
-    road.receiveShadow = true;
+    road.receiveShadow = !isLowEnd;
     this.mesh.add(road);
 
     this.body.addShape(
@@ -99,15 +102,15 @@ export class TrackPiece {
     const halfWallH = WALL_HEIGHT / 2;
     const halfWallT = WALL_THICKNESS / 2;
 
-    const wallMat = new THREE.MeshStandardMaterial({
-      color: 0xcc3333,
-      roughness: 0.6,
-    });
+    const wallMat = isLowEnd
+      ? new THREE.MeshLambertMaterial({ color: 0xcc3333 })
+      : new THREE.MeshStandardMaterial({ color: 0xcc3333, roughness: 0.6 });
 
     for (const side of [-1, 1]) {
       const wallGeo = new THREE.BoxGeometry(WALL_THICKNESS, WALL_HEIGHT, ROAD_LENGTH);
       const wall = new THREE.Mesh(wallGeo, wallMat);
       wall.position.set(side * (halfWidth + halfWallT), ROAD_THICKNESS + halfWallH, 0);
+      wall.castShadow = !isLowEnd;
       this.mesh.add(wall);
 
       this.body.addShape(

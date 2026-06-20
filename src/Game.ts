@@ -7,6 +7,7 @@ import { Editor } from "./Editor";
 import { Ghost } from "./Ghost";
 import { HUD } from "./HUD";
 import { TouchControls } from "./TouchControls";
+import { setLowEnd } from "./Config";
 
 type GameMode = "play" | "edit";
 
@@ -46,17 +47,19 @@ export class Game {
     const gl = (testCanvas.getContext("webgl2") || testCanvas.getContext("webgl")) as WebGLRenderingContext | null;
     const isSwift = !gl || (gl.getParameter(gl.RENDERER) as string).includes("SwiftShader") || (gl.getParameter(gl.VENDOR) as string).includes("Google");
     this.lowEnd = isSwift || window.devicePixelRatio > 2;
+    setLowEnd(this.lowEnd);
 
-    this.renderer = new THREE.WebGLRenderer({ antialias: !this.lowEnd });
+    this.renderer = new THREE.WebGLRenderer({ antialias: !this.lowEnd, powerPreference: "low-power" });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setPixelRatio(this.lowEnd ? 1 : Math.min(window.devicePixelRatio, 2));
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = this.lowEnd ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.enabled = !this.lowEnd;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     document.body.appendChild(this.renderer.domElement);
 
     this.world = new CANNON.World();
     this.world.gravity.set(0, -20, 0);
     this.world.broadphase = new CANNON.SAPBroadphase(this.world);
+    (this.world.solver as unknown as { iterations: number }).iterations = this.lowEnd ? 4 : 10;
     this.world.defaultContactMaterial.friction = 1.5;
     this.world.defaultContactMaterial.restitution = 0;
 
@@ -94,10 +97,9 @@ export class Game {
 
     const sun = new THREE.DirectionalLight(0xffffff, 1.2);
     sun.position.set(50, 80, 30);
-    sun.castShadow = true;
-    const sm = this.lowEnd ? 512 : 2048;
-    sun.shadow.mapSize.width = sm;
-    sun.shadow.mapSize.height = sm;
+    sun.castShadow = !this.lowEnd;
+    sun.shadow.mapSize.width = 2048;
+    sun.shadow.mapSize.height = 2048;
     sun.shadow.camera.near = 0.1;
     sun.shadow.camera.far = 200;
     sun.shadow.camera.left = -80;
@@ -111,7 +113,7 @@ export class Game {
   }
 
   private setupGround() {
-    const groundGeo = new THREE.PlaneGeometry(400, 400);
+    const groundGeo = new THREE.PlaneGeometry(200, 200);
     const groundMat = new THREE.MeshStandardMaterial({
       color: 0x3a7d44,
       roughness: 0.9,
@@ -169,7 +171,7 @@ export class Game {
     requestAnimationFrame(() => this.loop());
 
     const dt = Math.min(this.clock.getDelta(), 1 / 30);
-    this.world.step(1 / 60, dt, 3);
+    this.world.step(1 / 60, dt, this.lowEnd ? 1 : 3);
 
     if (this.input.toggleMode) {
       this.toggleMode();
