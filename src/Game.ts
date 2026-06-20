@@ -26,6 +26,7 @@ export class Game {
   mode: GameMode = "play";
   private clock = new THREE.Clock();
   private cameraTarget = new THREE.Vector3();
+  private lowEnd = false;
 
   constructor() {
     this.scene = new THREE.Scene();
@@ -41,11 +42,16 @@ export class Game {
     this.camera.position.set(0, 8, -10);
     this.camera.lookAt(0, 0, 0);
 
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    const testCanvas = document.createElement("canvas");
+    const gl = (testCanvas.getContext("webgl2") || testCanvas.getContext("webgl")) as WebGLRenderingContext | null;
+    const isSwift = !gl || (gl.getParameter(gl.RENDERER) as string).includes("SwiftShader") || (gl.getParameter(gl.VENDOR) as string).includes("Google");
+    this.lowEnd = isSwift || window.devicePixelRatio > 2;
+
+    this.renderer = new THREE.WebGLRenderer({ antialias: !this.lowEnd });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.setPixelRatio(this.lowEnd ? 1 : Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.type = this.lowEnd ? THREE.PCFShadowMap : THREE.PCFSoftShadowMap;
     document.body.appendChild(this.renderer.domElement);
 
     this.world = new CANNON.World();
@@ -89,8 +95,9 @@ export class Game {
     const sun = new THREE.DirectionalLight(0xffffff, 1.2);
     sun.position.set(50, 80, 30);
     sun.castShadow = true;
-    sun.shadow.mapSize.width = 2048;
-    sun.shadow.mapSize.height = 2048;
+    const sm = this.lowEnd ? 512 : 2048;
+    sun.shadow.mapSize.width = sm;
+    sun.shadow.mapSize.height = sm;
     sun.shadow.camera.near = 0.1;
     sun.shadow.camera.far = 200;
     sun.shadow.camera.left = -80;
