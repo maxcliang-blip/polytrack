@@ -4,8 +4,8 @@ import { InputManager } from "./InputManager";
 
 const WHEEL_RADIUS = 0.3;
 const WHEEL_WIDTH = 0.22;
-const CHASSIS_MASS = 300;
-const MAX_FORCE = 1200;
+const CHASSIS_MASS = 250;
+const MAX_FORCE = 1500;
 const MAX_BRAKE = 60;
 const MAX_STEER = 0.4;
 
@@ -50,10 +50,10 @@ export class Car {
     const wheelOptions = {
       radius: WHEEL_RADIUS,
       directionLocal: new CANNON.Vec3(0, -1, 0),
-      suspensionStiffness: 4000,
-      suspensionRestLength: 0.4,
-      dampingRelaxation: 300,
-      dampingCompression: 500,
+      suspensionStiffness: 2500,
+      suspensionRestLength: 0.35,
+      dampingRelaxation: 2000,
+      dampingCompression: 2500,
       frictionSlip: 1.5,
       maxSuspensionForce: 30000,
       rollInfluence: 0.15,
