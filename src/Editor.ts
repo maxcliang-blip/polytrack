@@ -25,6 +25,7 @@ export class Editor {
   private gridLines: THREE.LineSegments | null = null;
   private preview: THREE.Group | null = null;
   private previewValid = false;
+  lastGridPos = { gx: 0, gz: 0 };
 
   currentType: PieceType = "straight";
   currentRotation = 0;
@@ -36,6 +37,9 @@ export class Editor {
   private orbitRadius = 40;
   private isOrbiting = false;
   private prevMouse = { x: 0, y: 0 };
+
+  // Touch gestures
+  private touchDist = 0;
 
   constructor(
     scene: THREE.Scene,
@@ -55,6 +59,10 @@ export class Editor {
     renderer.domElement.addEventListener("pointermove", this.onPointerMove);
     renderer.domElement.addEventListener("pointerup", this.onPointerUp);
     renderer.domElement.addEventListener("wheel", this.onWheel, { passive: false });
+
+    renderer.domElement.addEventListener("touchstart", this.onTouchStart, { passive: false });
+    renderer.domElement.addEventListener("touchmove", this.onTouchMove, { passive: false });
+    renderer.domElement.addEventListener("touchend", this.onTouchEnd);
 
     window.addEventListener("keydown", this.onKeyDown);
   }
@@ -95,6 +103,7 @@ export class Editor {
 
     const gx = Math.round(point.x / GRID_SIZE);
     const gz = Math.round(point.z / GRID_SIZE);
+    this.lastGridPos = { gx, gz };
     return { gx, gz };
   }
 
@@ -179,6 +188,50 @@ export class Editor {
     this.isOrbiting = false;
   };
 
+  private onTouchStart = (e: TouchEvent) => {
+    if (!this.active) return;
+    if (e.touches.length >= 2) {
+      this.isOrbiting = true;
+      this.prevMouse.x = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+      this.prevMouse.y = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      this.touchDist = Math.sqrt(dx * dx + dy * dy);
+      e.preventDefault();
+    }
+  };
+
+  private onTouchMove = (e: TouchEvent) => {
+    if (!this.active || e.touches.length < 2) return;
+    e.preventDefault();
+    const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+    const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+    if (this.isOrbiting && this.active) {
+      const dx = cx - this.prevMouse.x;
+      const dy = cy - this.prevMouse.y;
+      this.orbitTheta -= dx * 0.01;
+      this.orbitPhi = Math.max(0.1, Math.min(Math.PI - 0.1, this.orbitPhi + dy * 0.01));
+      this.prevMouse.x = cx;
+      this.prevMouse.y = cy;
+    }
+    // Pinch zoom
+    const dx2 = e.touches[0].clientX - e.touches[1].clientX;
+    const dy2 = e.touches[0].clientY - e.touches[1].clientY;
+    const dist = Math.sqrt(dx2 * dx2 + dy2 * dy2);
+    if (this.touchDist > 0) {
+      const delta = (this.touchDist - dist) * 0.5;
+      this.orbitRadius = Math.max(10, Math.min(120, this.orbitRadius + delta));
+    }
+    this.touchDist = dist;
+  };
+
+  private onTouchEnd = (e: TouchEvent) => {
+    if (e.touches.length < 2) {
+      this.isOrbiting = false;
+      this.touchDist = 0;
+    }
+  };
+
   private onWheel = (e: WheelEvent) => {
     if (e.shiftKey) {
       this.orbitTarget.y += e.deltaY * 0.1;
@@ -215,6 +268,10 @@ export class Editor {
     if (pos) this.removePiece(pos.gx, pos.gz);
   }
 
+  deleteAtLastPos() {
+    this.removePiece(this.lastGridPos.gx, this.lastGridPos.gz);
+  }
+
   update() {
     this.camera.position.x =
       this.orbitTarget.x + this.orbitRadius * Math.sin(this.orbitPhi) * Math.sin(this.orbitTheta);
@@ -241,6 +298,9 @@ export class Editor {
     this.renderer.domElement.removeEventListener("pointermove", this.onPointerMove);
     this.renderer.domElement.removeEventListener("pointerup", this.onPointerUp);
     this.renderer.domElement.removeEventListener("wheel", this.onWheel);
+    this.renderer.domElement.removeEventListener("touchstart", this.onTouchStart);
+    this.renderer.domElement.removeEventListener("touchmove", this.onTouchMove);
+    this.renderer.domElement.removeEventListener("touchend", this.onTouchEnd);
     window.removeEventListener("keydown", this.onKeyDown);
     this.clearPreview();
     if (this.gridLines) {

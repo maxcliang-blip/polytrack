@@ -6,6 +6,7 @@ import { Track } from "./track/Track";
 import { Editor } from "./Editor";
 import { Ghost } from "./Ghost";
 import { HUD } from "./HUD";
+import { TouchControls } from "./TouchControls";
 
 type GameMode = "play" | "edit";
 
@@ -20,6 +21,7 @@ export class Game {
   editor: Editor;
   ghost: Ghost;
   hud: HUD;
+  touchControls: TouchControls;
 
   mode: GameMode = "play";
   private clock = new THREE.Clock();
@@ -58,6 +60,7 @@ export class Game {
     this.editor = new Editor(this.scene, this.camera, this.renderer, this.track);
     this.ghost = new Ghost(this.scene);
     this.hud = new HUD();
+    this.touchControls = new TouchControls(this.input, this.editor);
 
     this.setupLighting();
     this.setupGround();
@@ -136,6 +139,7 @@ export class Game {
       this.editor.show();
       this.hud.showGhost(false);
       this.hud.setMode("edit");
+      this.touchControls.setMode("edit");
     } else {
       this.mode = "play";
       this.car.unfreeze();
@@ -145,6 +149,7 @@ export class Game {
       this.editor.hide();
       this.hud.resetTimer();
       this.hud.setMode("play");
+      this.touchControls.setMode("play");
     }
   }
 
@@ -169,6 +174,7 @@ export class Game {
       this.updateEdit();
     }
 
+    this.touchControls.update();
     this.input.clearFrame();
     this.renderer.render(this.scene, this.camera);
   }
@@ -206,9 +212,8 @@ export class Game {
     this.editor.update();
     this.car.reset();
 
-    // Delete piece under cursor
-    if (this.input.wasPressed("Delete") || this.input.wasPressed("Backspace")) {
-      this.editor.deleteAtCursor(this.input.mouseX, this.input.mouseY);
+    if (this.input.deletePressed) {
+      this.editor.deleteAtLastPos();
     }
   }
 }
