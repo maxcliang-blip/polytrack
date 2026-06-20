@@ -20,6 +20,7 @@ export class Editor {
   private track: Track;
   private raycaster = new THREE.Raycaster();
   private pointer = new THREE.Vector2();
+  private active = false;
 
   private gridLines: THREE.LineSegments | null = null;
   private preview: THREE.Group | null = null;
@@ -147,6 +148,7 @@ export class Editor {
   }
 
   private onPointerDown = (e: PointerEvent) => {
+    if (!this.active) return;
     if (e.button === 0) {
       const pos = this.getGridPos(e.clientX, e.clientY);
       if (pos) this.placePiece(pos.gx, pos.gz);
@@ -158,6 +160,7 @@ export class Editor {
   };
 
   private onPointerMove = (e: PointerEvent) => {
+    if (!this.active && !this.isOrbiting) return;
     if (this.isOrbiting) {
       const dx = e.clientX - this.prevMouse.x;
       const dy = e.clientY - this.prevMouse.y;
@@ -191,6 +194,7 @@ export class Editor {
   }
 
   private onKeyDown = (e: KeyboardEvent) => {
+    if (!this.active) return;
     if (e.code === "KeyR") {
       this.currentRotation += Math.PI / 2;
       if (this.currentRotation >= Math.PI * 2) this.currentRotation = 0;
@@ -222,10 +226,12 @@ export class Editor {
   }
 
   show() {
+    this.active = true;
     if (this.gridLines) this.gridLines.visible = true;
   }
 
   hide() {
+    this.active = false;
     if (this.gridLines) this.gridLines.visible = false;
     this.clearPreview();
   }
