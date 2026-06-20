@@ -172,7 +172,26 @@ export class Game {
     }
   }
 
-  start() {
+  startInMode(mode: GameMode) {
+    // Force-set mode without toggle animation
+    this.mode = mode;
+    if (mode === "play") {
+      this.car.unfreeze();
+      this.car.reset();
+      this.ghost.clearRecording();
+      this.ghost.startRecording();
+      this.editor.hide();
+      this.hud.resetTimer();
+      this.hud.setMode("play");
+      this.touchControls.setMode("play");
+    } else {
+      this.car.freeze();
+      this.ghost.stopRecording();
+      this.editor.show();
+      this.hud.showGhost(false);
+      this.hud.setMode("edit");
+      this.touchControls.setMode("edit");
+    }
     this.clock.start();
     this.loop();
   }

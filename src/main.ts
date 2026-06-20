@@ -1,5 +1,10 @@
-import * as THREE from "three";
 import { Game } from "./Game";
+import { Menu } from "./Menu";
 
 const game = new Game();
-game.start();
+const menu = new Menu();
+
+menu.onAction((action) => {
+  menu.hide();
+  game.startInMode(action === "play" ? "play" : "edit");
+});
