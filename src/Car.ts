@@ -31,7 +31,7 @@ export class Car {
 
     this.mesh = new THREE.Group();
     this.buildChassis();
-    this.buildWheels();
+    this.buildWheels(scene);
 
     this.chassisBody = new CANNON.Body({ mass: CHASSIS_MASS });
     this.chassisBody.addShape(
@@ -86,7 +86,6 @@ export class Car {
       new THREE.BoxGeometry(1.6, 0.2, 2.6),
       bodyMat
     );
-    body.position.y = 0.2;
     body.castShadow = true;
     this.mesh.add(body);
 
@@ -99,7 +98,7 @@ export class Car {
       new THREE.BoxGeometry(1.3, 0.22, 1.1),
       cabinMat
     );
-    cabin.position.set(0, 0.41, 0.3);
+    cabin.position.set(0, 0.21, 0.3);
     cabin.castShadow = true;
     this.mesh.add(cabin);
 
@@ -112,7 +111,7 @@ export class Car {
       new THREE.BoxGeometry(1.4, 0.05, 0.2),
       spoilerMat
     );
-    spoiler.position.set(0, 0.5, -1.25);
+    spoiler.position.set(0, 0.1, -1.25);
     this.mesh.add(spoiler);
 
     // Headlights at front (+Z)
@@ -126,7 +125,7 @@ export class Car {
         new THREE.BoxGeometry(0.2, 0.08, 0.05),
         lightMat
       );
-      light.position.set(side * 0.4, 0.2, 1.3);
+      light.position.set(side * 0.4, -0.1, 1.3);
       this.mesh.add(light);
     }
 
@@ -141,12 +140,12 @@ export class Car {
         new THREE.BoxGeometry(0.2, 0.08, 0.05),
         tailMat
       );
-      light.position.set(side * 0.4, 0.2, -1.3);
+      light.position.set(side * 0.4, -0.1, -1.3);
       this.mesh.add(light);
     }
   }
 
-  private buildWheels() {
+  private buildWheels(scene: THREE.Scene) {
     const wheelMat = new THREE.MeshStandardMaterial({
       color: 0x222222,
       roughness: 0.9,
@@ -175,7 +174,7 @@ export class Car {
       rim.rotation.z = Math.PI / 2;
       group.add(rim);
 
-      this.mesh.add(group);
+      scene.add(group);
       this.wheelMeshes.push(group);
     }
   }
