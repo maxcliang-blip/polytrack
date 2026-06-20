@@ -10,10 +10,10 @@ const MAX_BRAKE = 60;
 const MAX_STEER = 0.4;
 
 const wheelPositions = [
-  { x: -0.7, z: -1.2 },
-  { x: 0.7, z: -1.2 },
-  { x: -0.7, z: 1.2 },
-  { x: 0.7, z: 1.2 },
+  { x: -0.7, z: 1.2 },  // front-left  (+Z = forward)
+  { x: 0.7, z: 1.2 },   // front-right
+  { x: -0.7, z: -1.2 }, // rear-left
+  { x: 0.7, z: -1.2 },  // rear-right
 ];
 
 export class Car {
@@ -30,19 +30,16 @@ export class Car {
     this.input = input;
 
     this.mesh = new THREE.Group();
-
     this.buildChassis();
     this.buildWheels();
 
-    // Physics body
     this.chassisBody = new CANNON.Body({ mass: CHASSIS_MASS });
     this.chassisBody.addShape(
       new CANNON.Box(new CANNON.Vec3(0.9, 0.2, 1.4))
     );
-    this.chassisBody.position.set(0, 1, 0);
+    this.chassisBody.position.set(0, 0.6, 0);
     world.addBody(this.chassisBody);
 
-    // Vehicle - CORRECT axis indices for Y-up world
     this.vehicle = new CANNON.RaycastVehicle({
       chassisBody: this.chassisBody,
       indexRightAxis: 0,
@@ -53,16 +50,16 @@ export class Car {
     const wheelOptions = {
       radius: WHEEL_RADIUS,
       directionLocal: new CANNON.Vec3(0, -1, 0),
-      suspensionStiffness: 35,
-      suspensionRestLength: 0.35,
-      dampingRelaxation: 2.5,
-      dampingCompression: 5,
+      suspensionStiffness: 40,
+      suspensionRestLength: 0.3,
+      dampingRelaxation: 3,
+      dampingCompression: 6,
       frictionSlip: 1.5,
       maxSuspensionForce: 10000,
-      rollInfluence: 0.05,
+      rollInfluence: 0.1,
       axleLocal: new CANNON.Vec3(-1, 0, 0),
       chassisConnectionPointLocal: new CANNON.Vec3(0, 0, 0),
-      maxSuspensionTravel: 0.3,
+      maxSuspensionTravel: 0.25,
       customSlidingRotationalSpeed: -30,
       useCustomSlidingRotationalSpeed: true,
     };
@@ -79,58 +76,71 @@ export class Car {
   }
 
   private buildChassis() {
-    // Main body
     const bodyMat = new THREE.MeshStandardMaterial({
       color: 0xe63946,
       roughness: 0.4,
       metalness: 0.5,
     });
-    const body = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.25, 2.6), bodyMat);
-    body.position.y = 0.25;
+    const body = new THREE.Mesh(
+      new THREE.BoxGeometry(1.6, 0.2, 2.6),
+      bodyMat
+    );
+    body.position.y = 0.2;
     body.castShadow = true;
     this.mesh.add(body);
 
-    // Cabin
     const cabinMat = new THREE.MeshStandardMaterial({
       color: 0x1d3557,
       roughness: 0.3,
       metalness: 0.6,
     });
-    const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.25, 1.2), cabinMat);
-    cabin.position.set(0, 0.5, -0.3);
+    const cabin = new THREE.Mesh(
+      new THREE.BoxGeometry(1.3, 0.22, 1.1),
+      cabinMat
+    );
+    cabin.position.set(0, 0.41, 0.3);
     cabin.castShadow = true;
     this.mesh.add(cabin);
 
-    // Spoiler
+    // Spoiler at rear (-Z)
     const spoilerMat = new THREE.MeshStandardMaterial({
       color: 0x111111,
       roughness: 0.8,
     });
-    const spoiler = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.05, 0.25), spoilerMat);
-    spoiler.position.set(0, 0.55, 1.25);
+    const spoiler = new THREE.Mesh(
+      new THREE.BoxGeometry(1.4, 0.05, 0.2),
+      spoilerMat
+    );
+    spoiler.position.set(0, 0.5, -1.25);
     this.mesh.add(spoiler);
 
-    // Headlights
+    // Headlights at front (+Z)
     const lightMat = new THREE.MeshStandardMaterial({
       color: 0xffffaa,
       emissive: 0xffffaa,
       emissiveIntensity: 0.3,
     });
     for (const side of [-1, 1]) {
-      const light = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.05), lightMat);
-      light.position.set(side * 0.4, 0.25, -1.3);
+      const light = new THREE.Mesh(
+        new THREE.BoxGeometry(0.2, 0.08, 0.05),
+        lightMat
+      );
+      light.position.set(side * 0.4, 0.2, 1.3);
       this.mesh.add(light);
     }
 
-    // Taillights
+    // Taillights at rear (-Z)
     const tailMat = new THREE.MeshStandardMaterial({
       color: 0xff0000,
       emissive: 0xff0000,
       emissiveIntensity: 0.3,
     });
     for (const side of [-1, 1]) {
-      const light = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.1, 0.05), tailMat);
-      light.position.set(side * 0.4, 0.25, 1.3);
+      const light = new THREE.Mesh(
+        new THREE.BoxGeometry(0.2, 0.08, 0.05),
+        tailMat
+      );
+      light.position.set(side * 0.4, 0.2, -1.3);
       this.mesh.add(light);
     }
   }
@@ -209,11 +219,16 @@ export class Car {
       m.quaternion.copy(t.quaternion as unknown as THREE.Quaternion);
     }
 
-    this.mesh.position.copy(this.chassisBody.position as unknown as THREE.Vector3);
-    this.mesh.quaternion.copy(this.chassisBody.quaternion as unknown as THREE.Quaternion);
+    this.mesh.position.copy(
+      this.chassisBody.position as unknown as THREE.Vector3
+    );
+    this.mesh.quaternion.copy(
+      this.chassisBody.quaternion as unknown as THREE.Quaternion
+    );
 
     const vel = this.chassisBody.velocity;
-    this.isRunning = Math.sqrt(vel.x * vel.x + vel.y * vel.y + vel.z * vel.z) > 0.5;
+    this.isRunning =
+      Math.sqrt(vel.x * vel.x + vel.y * vel.y + vel.z * vel.z) > 0.5;
 
     if (this.input.restart) {
       this.reset();
@@ -221,10 +236,13 @@ export class Car {
   }
 
   reset() {
-    this.chassisBody.position.set(0, 1.5, 0);
+    this.chassisBody.position.set(0, 0.6, 0);
     this.chassisBody.velocity.setZero();
     this.chassisBody.angularVelocity.setZero();
-    this.chassisBody.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 0, 1), 0);
+    this.chassisBody.quaternion.setFromAxisAngle(
+      new CANNON.Vec3(0, 0, 1),
+      0
+    );
     this.isRunning = false;
   }
 }
