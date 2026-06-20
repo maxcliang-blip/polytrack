@@ -37,7 +37,8 @@ export class Car {
     this.chassisBody.addShape(
       new CANNON.Box(new CANNON.Vec3(0.9, 0.2, 1.4))
     );
-    this.chassisBody.position.set(0, 1.5, 0);
+    // Start with wheels just touching ground (no initial drop)
+    this.chassisBody.position.set(0, 0.8, 0);
     world.addBody(this.chassisBody);
 
     this.vehicle = new CANNON.RaycastVehicle({
@@ -54,9 +55,9 @@ export class Car {
       suspensionRestLength: 0.4,
       dampingRelaxation: 30,
       dampingCompression: 40,
-      frictionSlip: 1.5,
-      maxSuspensionForce: 30000,
-      rollInfluence: 0.15,
+      frictionSlip: 2,
+      maxSuspensionForce: 50000,
+      rollInfluence: 0.2,
       axleLocal: new CANNON.Vec3(-1, 0, 0),
       chassisConnectionPointLocal: new CANNON.Vec3(0, 0, 0),
       maxSuspensionTravel: 0.3,
@@ -236,7 +237,7 @@ export class Car {
   }
 
   reset() {
-    this.chassisBody.position.set(0, 1.5, 0);
+    this.chassisBody.position.set(0, 0.8, 0);
     this.chassisBody.velocity.setZero();
     this.chassisBody.angularVelocity.setZero();
     this.chassisBody.quaternion.setFromAxisAngle(
