@@ -32,13 +32,12 @@ export class Game {
   constructor() {
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x87ceeb);
-    this.scene.fog = new THREE.Fog(0x87ceeb, 80, 200);
 
     this.camera = new THREE.PerspectiveCamera(
       70,
       window.innerWidth / window.innerHeight,
       0.1,
-      500
+      this.lowEnd ? 100 : 500
     );
     this.camera.position.set(0, 8, -10);
     this.camera.lookAt(0, 0, 0);
@@ -49,11 +48,16 @@ export class Game {
     this.lowEnd = isSwift || window.devicePixelRatio > 2;
     setLowEnd(this.lowEnd);
 
+    const scale = this.lowEnd ? 0.35 : 1;
     this.renderer = new THREE.WebGLRenderer({ antialias: !this.lowEnd, powerPreference: "low-power" });
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.setPixelRatio(this.lowEnd ? 1 : Math.min(window.devicePixelRatio, 2));
+    this.renderer.setSize(Math.round(window.innerWidth * scale), Math.round(window.innerHeight * scale));
+    this.renderer.setPixelRatio(1);
     this.renderer.shadowMap.enabled = !this.lowEnd;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    if (this.lowEnd) {
+      this.renderer.domElement.style.width = "100%";
+      this.renderer.domElement.style.height = "100%";
+    }
     document.body.appendChild(this.renderer.domElement);
 
     this.world = new CANNON.World();
@@ -71,6 +75,9 @@ export class Game {
     this.hud = new HUD();
     this.touchControls = new TouchControls(this.input, this.editor);
 
+    if (!this.lowEnd) {
+      this.scene.fog = new THREE.Fog(0x87ceeb, 80, 200);
+    }
     this.setupLighting();
     this.setupGround();
     this.setupResize();
@@ -108,8 +115,10 @@ export class Game {
     sun.shadow.camera.bottom = -80;
     this.scene.add(sun);
 
-    const hemi = new THREE.HemisphereLight(0x87ceeb, 0x3a7d44, 0.4);
-    this.scene.add(hemi);
+    if (!this.lowEnd) {
+      const hemi = new THREE.HemisphereLight(0x87ceeb, 0x3a7d44, 0.4);
+      this.scene.add(hemi);
+    }
   }
 
   private setupGround() {
@@ -136,7 +145,8 @@ export class Game {
     window.addEventListener("resize", () => {
       this.camera.aspect = window.innerWidth / window.innerHeight;
       this.camera.updateProjectionMatrix();
-      this.renderer.setSize(window.innerWidth, window.innerHeight);
+      const s = this.lowEnd ? 0.35 : 1;
+      this.renderer.setSize(Math.round(window.innerWidth * s), Math.round(window.innerHeight * s));
     });
   }
 
