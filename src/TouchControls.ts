@@ -207,8 +207,8 @@ export class TouchControls {
     const v = this.joystickVal;
     this.input.touchForward = v.y < -DEAD_ZONE;
     this.input.touchBackward = v.y > DEAD_ZONE;
-    this.input.touchLeft = v.x < -DEAD_ZONE;
-    this.input.touchRight = v.x > DEAD_ZONE;
+    this.input.touchLeft = v.x > DEAD_ZONE;
+    this.input.touchRight = v.x < -DEAD_ZONE;
   }
 
   dispose() {

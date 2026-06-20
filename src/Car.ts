@@ -194,7 +194,7 @@ export class Car {
 
     const engineForce = this.input.forward ? MAX_FORCE : 0;
     const brakeForce = this.input.backward ? MAX_BRAKE : 0;
-    const steerInput = this.input.left ? 1 : this.input.right ? -1 : 0;
+    const steerInput = this.input.left ? -1 : this.input.right ? 1 : 0;
 
     const targetSteer = steerInput * MAX_STEER;
     this.steeringAngle += (targetSteer - this.steeringAngle) * Math.min(1, 10 * dt);
