@@ -4,8 +4,8 @@ import { InputManager } from "./InputManager";
 
 const WHEEL_RADIUS = 0.3;
 const WHEEL_WIDTH = 0.22;
-const CHASSIS_MASS = 200;
-const MAX_FORCE = 1000;
+const CHASSIS_MASS = 300;
+const MAX_FORCE = 1200;
 const MAX_BRAKE = 60;
 const MAX_STEER = 0.4;
 
@@ -37,7 +37,7 @@ export class Car {
     this.chassisBody.addShape(
       new CANNON.Box(new CANNON.Vec3(0.9, 0.2, 1.4))
     );
-    this.chassisBody.position.set(0, 0.6, 0);
+    this.chassisBody.position.set(0, 1.5, 0);
     world.addBody(this.chassisBody);
 
     this.vehicle = new CANNON.RaycastVehicle({
@@ -50,16 +50,16 @@ export class Car {
     const wheelOptions = {
       radius: WHEEL_RADIUS,
       directionLocal: new CANNON.Vec3(0, -1, 0),
-      suspensionStiffness: 40,
-      suspensionRestLength: 0.3,
-      dampingRelaxation: 3,
-      dampingCompression: 6,
+      suspensionStiffness: 4000,
+      suspensionRestLength: 0.4,
+      dampingRelaxation: 300,
+      dampingCompression: 500,
       frictionSlip: 1.5,
-      maxSuspensionForce: 10000,
-      rollInfluence: 0.1,
+      maxSuspensionForce: 30000,
+      rollInfluence: 0.15,
       axleLocal: new CANNON.Vec3(-1, 0, 0),
       chassisConnectionPointLocal: new CANNON.Vec3(0, 0, 0),
-      maxSuspensionTravel: 0.25,
+      maxSuspensionTravel: 0.3,
       customSlidingRotationalSpeed: -30,
       useCustomSlidingRotationalSpeed: true,
     };
@@ -236,7 +236,7 @@ export class Car {
   }
 
   reset() {
-    this.chassisBody.position.set(0, 0.6, 0);
+    this.chassisBody.position.set(0, 1.5, 0);
     this.chassisBody.velocity.setZero();
     this.chassisBody.angularVelocity.setZero();
     this.chassisBody.quaternion.setFromAxisAngle(

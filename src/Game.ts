@@ -49,7 +49,7 @@ export class Game {
     this.world = new CANNON.World();
     this.world.gravity.set(0, -25, 0);
     this.world.broadphase = new CANNON.SAPBroadphase(this.world);
-    this.world.defaultContactMaterial.friction = 0.8;
+    this.world.defaultContactMaterial.friction = 1.5;
 
     this.input = new InputManager();
     this.track = new Track(this.scene, this.world);
