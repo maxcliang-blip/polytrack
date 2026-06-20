@@ -1,8 +1,12 @@
-export type MenuAction = "play" | "editor";
+import { PRESETS, TrackPreset } from "./track/Presets";
+
+export type MenuAction = { type: "play"; trackIndex: number } | { type: "editor" };
 
 export class Menu {
   private container: HTMLDivElement;
   private callback: ((action: MenuAction) => void) | null = null;
+  private selectedTrack = 0;
+  private trackBtns: HTMLButtonElement[] = [];
 
   constructor() {
     this.container = document.createElement("div");
@@ -26,11 +30,41 @@ export class Menu {
     this.container.appendChild(line);
 
     const playBtn = this.makeBtn("PLAY", false);
-    playBtn.onclick = () => this.callback?.("play");
+    playBtn.onclick = () => this.callback?.({ type: "play", trackIndex: this.selectedTrack });
     this.container.appendChild(playBtn);
 
+    // Track selector
+    const trackRow = document.createElement("div");
+    trackRow.style.cssText = "display:flex;gap:8px;margin:12px 0 8px 0;";
+    PRESETS.forEach((preset, i) => {
+      const btn = document.createElement("button");
+      btn.textContent = preset.name;
+      btn.style.cssText = this.trackBtnStyle(i === 0);
+      btn.onmouseenter = () => {
+        if (i !== this.selectedTrack) {
+          btn.style.borderColor = "#555";
+          btn.style.color = "#ccc";
+        }
+      };
+      btn.onmouseleave = () => {
+        if (i !== this.selectedTrack) {
+          btn.style.borderColor = "#222";
+          btn.style.color = "#555";
+        }
+      };
+      btn.onclick = () => {
+        this.selectedTrack = i;
+        this.trackBtns.forEach((b, j) => {
+          Object.assign(b.style, cssTextToObj(this.trackBtnStyle(j === i)));
+        });
+      };
+      trackRow.appendChild(btn);
+      this.trackBtns.push(btn);
+    });
+    this.container.appendChild(trackRow);
+
     const editorBtn = this.makeBtn("TRACK EDITOR", true);
-    editorBtn.onclick = () => this.callback?.("editor");
+    editorBtn.onclick = () => this.callback?.({ type: "editor" });
     this.container.appendChild(editorBtn);
 
     const controls = document.createElement("div");
@@ -44,11 +78,19 @@ export class Menu {
     document.body.appendChild(this.container);
   }
 
+  private trackBtnStyle(selected: boolean): string {
+    const base = "padding:6px 14px;border-radius:3px;cursor:pointer;font-family:monospace;font-size:12px;font-weight:700;letter-spacing:1px;transition:all 0.15s;";
+    if (selected) {
+      return base + "background:#e63946;color:#fff;border:1px solid #e63946;";
+    }
+    return base + "background:transparent;color:#555;border:1px solid #222;";
+  }
+
   private makeBtn(text: string, outline: boolean): HTMLButtonElement {
     const btn = document.createElement("button");
     btn.textContent = text;
     btn.style.cssText = `
-      width:220px;height:46px;margin:5px;border-radius:4px;
+      width:220px;height:46px;margin:4px;border-radius:4px;
       font-family:monospace;font-size:14px;font-weight:700;cursor:pointer;
       letter-spacing:2px;transition:background 0.15s;
       ${
@@ -79,4 +121,13 @@ export class Menu {
   dispose() {
     document.body.removeChild(this.container);
   }
+}
+
+function cssTextToObj(css: string): Record<string, string> {
+  const obj: Record<string, string> = {};
+  css.split(";").forEach((s) => {
+    const i = s.indexOf(":");
+    if (i > 0) obj[s.slice(0, i).trim()] = s.slice(i + 1).trim();
+  });
+  return obj;
 }

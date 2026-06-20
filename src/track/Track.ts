@@ -86,5 +86,12 @@ export class Track {
     return this.pieces.map((p) => ({ ...p.data }));
   }
 
+  loadData(data: TrackPieceData[]) {
+    this.clear();
+    for (const d of data) {
+      this.pieces.push(new TrackPiece(this.scene, this.world, d));
+    }
+  }
+
   update(_dt: number) {}
 }
