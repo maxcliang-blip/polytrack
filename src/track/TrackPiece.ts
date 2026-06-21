@@ -91,7 +91,7 @@ export class TrackPiece {
 
   private buildTurn() {
     this.turnCfg = getTurnConfig(this.data.rotation, this.data.turnDir === "right");
-    this.addRoad(WALL_THICKNESS);
+    this.addRoad(WALL_THICKNESS, undefined, true);
     this.addTurnRoad();
     this.addTurnArrows();
     this.addTurnCurbs();
@@ -192,22 +192,24 @@ export class TrackPiece {
     }
   }
 
-  private addRoad(extraWidth: number, color?: number) {
-    const geo = new THREE.BoxGeometry(
-      ROAD_WIDTH + extraWidth * 2,
-      ROAD_THICKNESS,
-      ROAD_LENGTH
-    );
-    const mat = isLowEnd
-      ? new THREE.MeshLambertMaterial({ color: color ?? (this.data.type === "start" ? 0x444444 : 0x555555) })
-      : new THREE.MeshStandardMaterial({
-          color: color ?? (this.data.type === "start" ? 0x444444 : 0x555555),
-          roughness: 0.8,
-        });
-    const road = new THREE.Mesh(geo, mat);
-    road.position.y = ROAD_THICKNESS / 2;
-    road.receiveShadow = !isLowEnd;
-    this.mesh.add(road);
+  private addRoad(extraWidth: number, color?: number, skipVisual?: boolean) {
+    if (!skipVisual) {
+      const geo = new THREE.BoxGeometry(
+        ROAD_WIDTH + extraWidth * 2,
+        ROAD_THICKNESS,
+        ROAD_LENGTH
+      );
+      const mat = isLowEnd
+        ? new THREE.MeshLambertMaterial({ color: color ?? (this.data.type === "start" ? 0x444444 : 0x555555) })
+        : new THREE.MeshStandardMaterial({
+            color: color ?? (this.data.type === "start" ? 0x444444 : 0x555555),
+            roughness: 0.8,
+          });
+      const road = new THREE.Mesh(geo, mat);
+      road.position.y = ROAD_THICKNESS / 2;
+      road.receiveShadow = !isLowEnd;
+      this.mesh.add(road);
+    }
 
     this.body.addShape(
       new CANNON.Box(
