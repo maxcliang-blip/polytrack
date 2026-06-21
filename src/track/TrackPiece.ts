@@ -5,12 +5,15 @@ import { isLowEnd } from "../Config";
 export type PieceType = "straight" | "turn" | "start" | "finish";
 export type TurnDir = "left" | "right";
 
+export type EntryFace = "+z" | "-z" | "+x" | "-x";
+
 export interface TrackPieceData {
   type: PieceType;
   x: number;
   z: number;
   rotation: number;
   turnDir?: TurnDir;
+  entryFace?: EntryFace;
 }
 
 interface TurnConfig {
@@ -20,24 +23,21 @@ interface TurnConfig {
   endAngle: number;
 }
 
-function getTurnConfig(rot: number, isRight: boolean): TurnConfig {
-  let r = ((rot % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
-  if (Math.abs(r - 2 * Math.PI) < 0.01) r = 0;
-  if (r < 0.01)
-    return isRight
-      ? { cx: -4, cz: 4, startAngle: 3 * Math.PI / 2, endAngle: 2 * Math.PI }
-      : { cx: 4, cz: 4, startAngle: Math.PI, endAngle: 3 * Math.PI / 2 };
-  if (Math.abs(r - Math.PI / 2) < 0.01)
-    return isRight
-      ? { cx: -4, cz: -4, startAngle: 0, endAngle: Math.PI / 2 }
-      : { cx: -4, cz: 4, startAngle: 3 * Math.PI / 2, endAngle: 2 * Math.PI };
-  if (Math.abs(r - Math.PI) < 0.01)
-    return isRight
-      ? { cx: 4, cz: -4, startAngle: Math.PI / 2, endAngle: Math.PI }
-      : { cx: -4, cz: -4, startAngle: 0, endAngle: Math.PI / 2 };
-  return isRight
-    ? { cx: 4, cz: 4, startAngle: Math.PI, endAngle: 3 * Math.PI / 2 }
-    : { cx: 4, cz: -4, startAngle: Math.PI / 2, endAngle: Math.PI };
+function getTurnConfig(entryFace: EntryFace): TurnConfig {
+  switch (entryFace) {
+    case "+z": return { cx: 4, cz: 4, startAngle: Math.PI, endAngle: 3 * Math.PI / 2 };
+    case "-z": return { cx: -4, cz: -4, startAngle: 0, endAngle: Math.PI / 2 };
+    case "+x": return { cx: 4, cz: -4, startAngle: Math.PI / 2, endAngle: Math.PI };
+    case "-x": return { cx: -4, cz: 4, startAngle: 3 * Math.PI / 2, endAngle: 2 * Math.PI };
+  }
+}
+
+function inferEntryFace(rot: number, isRight: boolean): EntryFace {
+  const r = ((rot % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+  if (Math.abs(r) < 0.01) return isRight ? "-x" : "+z";
+  if (Math.abs(r - Math.PI / 2) < 0.01) return isRight ? "-z" : "-x";
+  if (Math.abs(r - Math.PI) < 0.01) return isRight ? "+x" : "-z";
+  return isRight ? "+z" : "+x";
 }
 
 export const ROAD_WIDTH = 4;
@@ -93,7 +93,8 @@ export class TrackPiece {
   }
 
   private buildTurn() {
-    this.turnCfg = getTurnConfig(this.data.rotation, this.data.turnDir === "right");
+    const entry = this.data.entryFace ?? inferEntryFace(this.data.rotation, this.data.turnDir === "right");
+    this.turnCfg = getTurnConfig(entry);
     this.addRoad(WALL_THICKNESS, undefined, true);
     this.addTurnRoad();
     this.addTurnArrows();

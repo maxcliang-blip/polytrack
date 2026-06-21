@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import * as CANNON from "cannon-es";
-import { TrackPiece, TrackPieceData } from "./TrackPiece";
+import { TrackPiece, TrackPieceData, EntryFace } from "./TrackPiece";
 import { ROAD_LENGTH } from "./TrackPiece";
 
 const DEFAULT_TRACK: TrackPieceData[] = [
@@ -20,6 +20,23 @@ const DEFAULT_TRACK: TrackPieceData[] = [
 
 const SAVE_KEY = "polytrack_track";
 
+function computeEntryFace(data: TrackPieceData[], i: number): EntryFace {
+  const prev = data[i - 1];
+  if (!prev) return "+z";
+  const dx = Math.round((data[i].x - prev.x) / 8);
+  const dz = Math.round((data[i].z - prev.z) / 8);
+  if (dx !== 0) return dx < 0 ? "-x" : "+x";
+  return dz < 0 ? "-z" : "+z";
+}
+
+function computeEntryFaces(data: TrackPieceData[]) {
+  for (let i = 0; i < data.length; i++) {
+    if (data[i].type === "turn" && !data[i].entryFace) {
+      data[i].entryFace = computeEntryFace(data, i);
+    }
+  }
+}
+
 export class Track {
   pieces: TrackPiece[] = [];
   private scene: THREE.Scene;
@@ -36,23 +53,35 @@ export class Track {
     if (saved) {
       try {
         const data = JSON.parse(saved) as TrackPieceData[];
+        computeEntryFaces(data);
         for (const d of data) {
           this.pieces.push(new TrackPiece(this.scene, this.world, d));
         }
         return;
       } catch {}
     }
-    for (const data of DEFAULT_TRACK) {
-      this.pieces.push(new TrackPiece(this.scene, this.world, data));
+    const defaultData = [...DEFAULT_TRACK];
+    computeEntryFaces(defaultData);
+    for (const d of defaultData) {
+      this.pieces.push(new TrackPiece(this.scene, this.world, d));
     }
   }
 
   save() {
-    const data = this.pieces.map((p) => p.data);
+    const data = this.pieces.map((p) => {
+      const { entryFace, ...rest } = p.data;
+      return rest;
+    });
     localStorage.setItem(SAVE_KEY, JSON.stringify(data));
   }
 
   addPiece(data: TrackPieceData): TrackPiece {
+    if (data.type === "turn" && !data.entryFace) {
+      data.entryFace = computeEntryFace(
+        [...this.pieces.map(p => p.data), data],
+        this.pieces.length
+      );
+    }
     const piece = new TrackPiece(this.scene, this.world, data);
     this.pieces.push(piece);
     return piece;
@@ -88,6 +117,7 @@ export class Track {
 
   loadData(data: TrackPieceData[]) {
     this.clear();
+    computeEntryFaces(data);
     for (const d of data) {
       this.pieces.push(new TrackPiece(this.scene, this.world, d));
     }
