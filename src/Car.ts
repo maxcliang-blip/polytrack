@@ -4,10 +4,10 @@ import { InputManager } from "./InputManager";
 
 const WHEEL_RADIUS = 0.3;
 const WHEEL_WIDTH = 0.22;
-const CHASSIS_MASS = 250;
-const MAX_FORCE = 2000;
-const MAX_BRAKE = 60;
-const MAX_STEER = 0.4;
+const CHASSIS_MASS = 150;
+const MAX_FORCE = 3000;
+const MAX_BRAKE = 40;
+const MAX_STEER = 0.5;
 
 const wheelPositions = [
   { x: -0.7, z: 1.2 },  // front-left  (+Z = forward)
@@ -51,13 +51,13 @@ export class Car {
     const wheelOptions = {
       radius: WHEEL_RADIUS,
       directionLocal: new CANNON.Vec3(0, -1, 0),
-      suspensionStiffness: 250,
+      suspensionStiffness: 160,
       suspensionRestLength: 0.4,
-      dampingRelaxation: 10,
-      dampingCompression: 15,
-      frictionSlip: 2,
-      maxSuspensionForce: 50000,
-      rollInfluence: 0.2,
+      dampingRelaxation: 8,
+      dampingCompression: 12,
+      frictionSlip: 1.2,
+      maxSuspensionForce: 30000,
+      rollInfluence: 0.1,
       axleLocal: new CANNON.Vec3(-1, 0, 0),
       chassisConnectionPointLocal: new CANNON.Vec3(0, 0, 0),
       maxSuspensionTravel: 0.3,
@@ -197,7 +197,7 @@ export class Car {
     const steerInput = this.input.left ? -1 : this.input.right ? 1 : 0;
 
     const targetSteer = steerInput * MAX_STEER;
-    this.steeringAngle += (targetSteer - this.steeringAngle) * Math.min(1, 10 * dt);
+    this.steeringAngle += (targetSteer - this.steeringAngle) * Math.min(1, 15 * dt);
 
     const wheels = this.vehicle.wheelInfos;
     wheels[0].steering = this.steeringAngle;
