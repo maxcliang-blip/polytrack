@@ -17,12 +17,6 @@ export const ROAD_THICKNESS = 0.3;
 export const WALL_HEIGHT = 0.5;
 export const WALL_THICKNESS = 0.2;
 
-const TURN_CENTER_X = 4;
-const TURN_CENTER_Z = 4;
-const TURN_INNER_R = 2;
-const TURN_OUTER_R = 6;
-const TURN_SEGMENTS = 20;
-
 export class TrackPiece {
   mesh: THREE.Group;
   body: CANNON.Body;
@@ -70,31 +64,30 @@ export class TrackPiece {
 
   private buildTurn() {
     this.addRoad(WALL_THICKNESS, 0x777777);
-    this.addTurnCurvedRoad();
+    this.addTurnRoad();
     this.addTurnArrows();
     this.addTurnCurbs();
-    this.addTurnWalls();
   }
 
-  private addTurnCurvedRoad() {
+  private addTurnRoad() {
+    const seg = 20;
+    const innerR = 2;
+    const outerR = 6;
+    const a0 = Math.PI;
+    const a1 = 3 * Math.PI / 2;
+
     const shape = new THREE.Shape();
     shape.moveTo(
-      TURN_CENTER_X - TURN_INNER_R * Math.cos(0),
-      TURN_CENTER_Z - TURN_INNER_R * Math.sin(0)
+      4 + innerR * Math.cos(a0),
+      4 + innerR * Math.sin(a0)
     );
-    for (let i = 1; i <= TURN_SEGMENTS; i++) {
-      const a = (i / TURN_SEGMENTS) * (Math.PI / 2);
-      shape.lineTo(
-        TURN_CENTER_X - TURN_INNER_R * Math.cos(a),
-        TURN_CENTER_Z - TURN_INNER_R * Math.sin(a)
-      );
+    for (let i = 1; i <= seg; i++) {
+      const a = a0 + (i / seg) * (a1 - a0);
+      shape.lineTo(4 + innerR * Math.cos(a), 4 + innerR * Math.sin(a));
     }
-    for (let i = TURN_SEGMENTS; i >= 0; i--) {
-      const a = (i / TURN_SEGMENTS) * (Math.PI / 2);
-      shape.lineTo(
-        TURN_CENTER_X - TURN_OUTER_R * Math.cos(a),
-        TURN_CENTER_Z - TURN_OUTER_R * Math.sin(a)
-      );
+    for (let i = seg; i >= 0; i--) {
+      const a = a0 + (i / seg) * (a1 - a0);
+      shape.lineTo(4 + outerR * Math.cos(a), 4 + outerR * Math.sin(a));
     }
     shape.closePath();
 
@@ -119,11 +112,12 @@ export class TrackPiece {
     });
 
     const midR = 4;
+    const a0 = Math.PI;
     const count = 3;
     for (let i = 0; i < count; i++) {
-      const a = ((i + 0.5) / count) * (Math.PI / 2);
-      const px = TURN_CENTER_X - midR * Math.cos(a);
-      const pz = TURN_CENTER_Z - midR * Math.sin(a);
+      const a = a0 + ((i + 0.5) / count) * (Math.PI / 2);
+      const px = 4 + midR * Math.cos(a);
+      const pz = 4 + midR * Math.sin(a);
 
       const arrShape = new THREE.Shape();
       const s = 0.5;
@@ -136,7 +130,7 @@ export class TrackPiece {
       const g = new THREE.ShapeGeometry(arrShape);
       const m = new THREE.Mesh(g, arrowMat);
       m.position.set(px, ROAD_THICKNESS + 0.005, pz);
-      m.rotation.y = a;
+      m.rotation.y = a - Math.PI;
       m.rotation.x = -Math.PI / 2;
       this.mesh.add(m);
     }
@@ -146,57 +140,25 @@ export class TrackPiece {
     const redMat = new THREE.MeshStandardMaterial({ color: 0xff4444 });
     const whiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
     const seg = 16;
+    const a0 = Math.PI;
+    const a1 = 3 * Math.PI / 2;
 
-    for (const [radius, isInner] of [[TURN_INNER_R, true], [TURN_OUTER_R, false]] as const) {
+    for (const radius of [2, 6]) {
       for (let i = 0; i < seg; i++) {
-        const a1 = (i / seg) * (Math.PI / 2);
-        const a2 = ((i + 1) / seg) * (Math.PI / 2);
-        const aMid = (a1 + a2) / 2;
-        const px = TURN_CENTER_X - radius * Math.cos(aMid);
-        const pz = TURN_CENTER_Z - radius * Math.sin(aMid);
-        const arcLen = (a2 - a1) * radius;
+        const a1_ = a0 + (i / seg) * (a1 - a0);
+        const a2_ = a0 + ((i + 1) / seg) * (a1 - a0);
+        const aMid = (a1_ + a2_) / 2;
+        const px = 4 + radius * Math.cos(aMid);
+        const pz = 4 + radius * Math.sin(aMid);
+        const arcLen = (a2_ - a1_) * radius;
 
         const c = new THREE.Mesh(
           new THREE.BoxGeometry(0.12, 0.06, arcLen),
           i % 2 === 0 ? redMat : whiteMat
         );
         c.position.set(px, ROAD_THICKNESS + 0.004, pz);
-        c.rotation.y = aMid;
+        c.rotation.y = -aMid;
         this.mesh.add(c);
-      }
-    }
-  }
-
-  private addTurnWalls() {
-    const wallMat = isLowEnd
-      ? new THREE.MeshLambertMaterial({ color: 0xcc3333 })
-      : new THREE.MeshStandardMaterial({ color: 0xcc3333, roughness: 0.6 });
-
-    const segCount = 12;
-    const wallHalfH = WALL_HEIGHT / 2;
-    const wallHalfT = WALL_THICKNESS / 2;
-
-    for (const radius of [TURN_INNER_R - WALL_THICKNESS / 2, TURN_OUTER_R + WALL_THICKNESS / 2]) {
-      for (let i = 0; i < segCount; i++) {
-        const a1 = (i / segCount) * (Math.PI / 2);
-        const a2 = ((i + 1) / segCount) * (Math.PI / 2);
-        const aMid = (a1 + a2) / 2;
-        const px = TURN_CENTER_X - radius * Math.cos(aMid);
-        const pz = TURN_CENTER_Z - radius * Math.sin(aMid);
-        const arcLen = (a2 - a1) * radius;
-
-        const wallGeo = new THREE.BoxGeometry(WALL_THICKNESS, WALL_HEIGHT, arcLen);
-        const wall = new THREE.Mesh(wallGeo, wallMat);
-        wall.position.set(px, ROAD_THICKNESS + wallHalfH, pz);
-        wall.rotation.y = aMid;
-        wall.castShadow = !isLowEnd;
-        this.mesh.add(wall);
-
-        this.body.addShape(
-          new CANNON.Box(new CANNON.Vec3(wallHalfT, wallHalfH, arcLen / 2)),
-          new CANNON.Vec3(px, ROAD_THICKNESS + wallHalfH, pz),
-          new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), aMid)
-        );
       }
     }
   }
