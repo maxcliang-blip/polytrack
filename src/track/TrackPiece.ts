@@ -91,10 +91,11 @@ export class TrackPiece {
 
   private buildTurn() {
     this.turnCfg = getTurnConfig(this.data.rotation, this.data.turnDir === "right");
-    this.addRoad(WALL_THICKNESS, 0x777777);
+    this.addRoad(WALL_THICKNESS);
     this.addTurnRoad();
     this.addTurnArrows();
     this.addTurnCurbs();
+    this.addTurnWalls();
   }
 
   private addTurnRoad() {
@@ -131,13 +132,9 @@ export class TrackPiece {
   private addTurnArrows() {
     const cfg = this.turnCfg!;
     const isRight = this.data.turnDir === "right";
-    const arrowMat = new THREE.MeshStandardMaterial({
-      color: 0xffffff,
-      transparent: true,
-      opacity: 0.5,
-      side: THREE.DoubleSide,
-      depthWrite: false,
-    });
+    const arrowMat = isLowEnd
+      ? new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.7, side: THREE.DoubleSide, depthWrite: false })
+      : new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.7, side: THREE.DoubleSide, depthWrite: false });
 
     const midR = 4;
     const count = 3;
@@ -150,7 +147,7 @@ export class TrackPiece {
       const pz = cfg.cz + midR * Math.sin(a);
 
       const arrShape = new THREE.Shape();
-      const s = 0.5;
+      const s = 0.8;
       arrShape.moveTo(0, s * 0.7);
       arrShape.lineTo(-s * 0.4, -s * 0.4);
       arrShape.lineTo(0, -s * 0.15);
@@ -244,6 +241,46 @@ export class TrackPiece {
         new CANNON.Box(new CANNON.Vec3(halfWallT, halfWallH, halfLen)),
         new CANNON.Vec3(side * (halfWidth + halfWallT), ROAD_THICKNESS + halfWallH, 0)
       );
+    }
+  }
+
+  private addTurnWalls() {
+    const cfg = this.turnCfg!;
+    const seg = 12;
+    const s = cfg.startAngle;
+    const e = cfg.endAngle;
+    const radii = [
+      { r: 2 - 0.1, wallW: WALL_THICKNESS },
+      { r: 6 + 0.1, wallW: WALL_THICKNESS },
+    ];
+    const halfWallH = WALL_HEIGHT / 2;
+    const wallMat = isLowEnd
+      ? new THREE.MeshLambertMaterial({ color: 0xcc3333 })
+      : new THREE.MeshStandardMaterial({ color: 0xcc3333, roughness: 0.6 });
+
+    for (const { r, wallW } of radii) {
+      for (let i = 0; i < seg; i++) {
+        const a1 = s + (i / seg) * (e - s);
+        const a2 = s + ((i + 1) / seg) * (e - s);
+        const aMid = (a1 + a2) / 2;
+        const px = cfg.cx + r * Math.cos(aMid);
+        const pz = cfg.cz + r * Math.sin(aMid);
+        const arcLen = (a2 - a1) * r;
+
+        const mesh = new THREE.Mesh(
+          new THREE.BoxGeometry(wallW, WALL_HEIGHT, arcLen),
+          wallMat
+        );
+        mesh.position.set(px, ROAD_THICKNESS + halfWallH, pz);
+        mesh.rotation.y = -aMid;
+        mesh.castShadow = !isLowEnd;
+        this.mesh.add(mesh);
+
+        this.body.addShape(
+          new CANNON.Box(new CANNON.Vec3(wallW / 2, halfWallH, arcLen / 2)),
+          new CANNON.Vec3(px, ROAD_THICKNESS + halfWallH, pz)
+        );
+      }
     }
   }
 
