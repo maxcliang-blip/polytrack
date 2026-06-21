@@ -92,9 +92,42 @@ export class TrackPiece {
   private buildTurn() {
     this.turnCfg = getTurnConfig(this.data.rotation, this.data.turnDir === "right");
     this.addRoad(WALL_THICKNESS);
+    this.addTurnRoad();
     this.addTurnArrows();
     this.addTurnCurbs();
     this.addTurnWalls();
+  }
+
+  private addTurnRoad() {
+    const cfg = this.turnCfg!;
+    const seg = 16;
+    const innerR = 1.8;
+    const outerR = 6.2;
+    const s = cfg.startAngle;
+    const e = cfg.endAngle;
+
+    const shape = new THREE.Shape();
+    shape.moveTo(cfg.cx + innerR * Math.cos(s), cfg.cz + innerR * Math.sin(s));
+    for (let i = 1; i <= seg; i++) {
+      const a = s + (i / seg) * (e - s);
+      shape.lineTo(cfg.cx + innerR * Math.cos(a), cfg.cz + innerR * Math.sin(a));
+    }
+    for (let i = seg; i >= 0; i--) {
+      const a = s + (i / seg) * (e - s);
+      shape.lineTo(cfg.cx + outerR * Math.cos(a), cfg.cz + outerR * Math.sin(a));
+    }
+    shape.closePath();
+
+    const roadColor = this.data.type === "start" ? 0x444444 : 0x555555;
+    const geo = new THREE.ShapeGeometry(shape);
+    const mat = isLowEnd
+      ? new THREE.MeshLambertMaterial({ color: roadColor })
+      : new THREE.MeshStandardMaterial({ color: roadColor, roughness: 0.8 });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.position.y = ROAD_THICKNESS + 0.001;
+    mesh.receiveShadow = !isLowEnd;
+    this.mesh.add(mesh);
   }
 
   private addTurnArrows() {
