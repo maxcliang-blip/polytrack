@@ -23,21 +23,30 @@ interface TurnConfig {
   endAngle: number;
 }
 
-function getTurnConfig(entryFace: EntryFace): TurnConfig {
-  switch (entryFace) {
-    case "+z": return { cx: 4, cz: 4, startAngle: Math.PI, endAngle: 3 * Math.PI / 2 };
-    case "-z": return { cx: -4, cz: -4, startAngle: 0, endAngle: Math.PI / 2 };
-    case "+x": return { cx: 4, cz: -4, startAngle: Math.PI / 2, endAngle: Math.PI };
-    case "-x": return { cx: -4, cz: 4, startAngle: 3 * Math.PI / 2, endAngle: 2 * Math.PI };
+function getTurnConfig(entryFace: EntryFace, isRight: boolean): TurnConfig {
+  if (isRight) {
+    switch (entryFace) {
+      case "-z": return { cx: -4, cz: 4, startAngle: 3 * Math.PI / 2, endAngle: 2 * Math.PI };
+      case "+x": return { cx: -4, cz: -4, startAngle: 0, endAngle: Math.PI / 2 };
+      case "+z": return { cx: 4, cz: -4, startAngle: Math.PI / 2, endAngle: Math.PI };
+      case "-x": return { cx: 4, cz: 4, startAngle: Math.PI, endAngle: 3 * Math.PI / 2 };
+    }
+  } else {
+    switch (entryFace) {
+      case "-z": return { cx: 4, cz: 4, startAngle: Math.PI, endAngle: 3 * Math.PI / 2 };
+      case "+x": return { cx: -4, cz: 4, startAngle: 3 * Math.PI / 2, endAngle: 2 * Math.PI };
+      case "+z": return { cx: -4, cz: -4, startAngle: 0, endAngle: Math.PI / 2 };
+      case "-x": return { cx: 4, cz: -4, startAngle: Math.PI / 2, endAngle: Math.PI };
+    }
   }
 }
 
-function inferEntryFace(rot: number, isRight: boolean): EntryFace {
+function inferEntryFace(rot: number, _isRight?: boolean): EntryFace {
   const r = ((rot % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
-  if (Math.abs(r) < 0.01) return isRight ? "-x" : "+z";
-  if (Math.abs(r - Math.PI / 2) < 0.01) return isRight ? "-z" : "-x";
-  if (Math.abs(r - Math.PI) < 0.01) return isRight ? "+x" : "-z";
-  return isRight ? "+z" : "+x";
+  if (Math.abs(r) < 0.01) return "-z";
+  if (Math.abs(r - Math.PI / 2) < 0.01) return "+x";
+  if (Math.abs(r - Math.PI) < 0.01) return "+z";
+  return "-x";
 }
 
 export const ROAD_WIDTH = 4;
@@ -93,8 +102,9 @@ export class TrackPiece {
   }
 
   private buildTurn() {
-    const entry = this.data.entryFace ?? inferEntryFace(this.data.rotation, this.data.turnDir === "right");
-    this.turnCfg = getTurnConfig(entry);
+    const isRight = this.data.turnDir === "right";
+    const entry = this.data.entryFace ?? inferEntryFace(this.data.rotation, isRight);
+    this.turnCfg = getTurnConfig(entry, isRight);
     this.addRoad(WALL_THICKNESS, undefined, true);
     this.addTurnRoad();
     this.addTurnArrows();
