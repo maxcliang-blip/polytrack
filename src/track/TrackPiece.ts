@@ -3,12 +3,38 @@ import * as CANNON from "cannon-es";
 import { isLowEnd } from "../Config";
 
 export type PieceType = "straight" | "turn" | "start" | "finish";
+export type TurnDir = "left" | "right";
 
 export interface TrackPieceData {
   type: PieceType;
   x: number;
   z: number;
   rotation: number;
+  turnDir?: TurnDir;
+}
+
+interface TurnConfig {
+  cx: number;
+  cz: number;
+  startAngle: number;
+  endAngle: number;
+}
+
+function getTurnConfig(rot: number, isRight: boolean): TurnConfig {
+  const r = ((rot % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+  if (!isRight) {
+    if (r < 0.01 || Math.abs(r - Math.PI) < 0.01)
+      return { cx: 4, cz: 4, startAngle: Math.PI, endAngle: 3 * Math.PI / 2 };
+    if (Math.abs(r - Math.PI / 2) < 0.01)
+      return { cx: -4, cz: -4, startAngle: 0, endAngle: Math.PI / 2 };
+    return { cx: 4, cz: -4, startAngle: Math.PI / 2, endAngle: Math.PI };
+  } else {
+    if (r < 0.01 || Math.abs(r - Math.PI) < 0.01)
+      return { cx: -4, cz: 4, startAngle: 3 * Math.PI / 2, endAngle: 2 * Math.PI };
+    if (Math.abs(r - Math.PI / 2) < 0.01)
+      return { cx: 4, cz: -4, startAngle: Math.PI / 2, endAngle: Math.PI };
+    return { cx: 4, cz: 4, startAngle: Math.PI, endAngle: 3 * Math.PI / 2 };
+  }
 }
 
 export const ROAD_WIDTH = 4;
@@ -22,6 +48,7 @@ export class TrackPiece {
   body: CANNON.Body;
   private scene: THREE.Scene;
   private world: CANNON.World;
+  private turnCfg: TurnConfig | null = null;
 
   constructor(
     scene: THREE.Scene,
@@ -63,6 +90,7 @@ export class TrackPiece {
   }
 
   private buildTurn() {
+    this.turnCfg = getTurnConfig(this.data.rotation, this.data.turnDir === "right");
     this.addRoad(WALL_THICKNESS, 0x777777);
     this.addTurnRoad();
     this.addTurnArrows();
@@ -70,24 +98,22 @@ export class TrackPiece {
   }
 
   private addTurnRoad() {
+    const cfg = this.turnCfg!;
     const seg = 20;
     const innerR = 2;
     const outerR = 6;
-    const a0 = Math.PI;
-    const a1 = 3 * Math.PI / 2;
+    const s = cfg.startAngle;
+    const e = cfg.endAngle;
 
     const shape = new THREE.Shape();
-    shape.moveTo(
-      4 + innerR * Math.cos(a0),
-      4 + innerR * Math.sin(a0)
-    );
+    shape.moveTo(cfg.cx + innerR * Math.cos(s), cfg.cz + innerR * Math.sin(s));
     for (let i = 1; i <= seg; i++) {
-      const a = a0 + (i / seg) * (a1 - a0);
-      shape.lineTo(4 + innerR * Math.cos(a), 4 + innerR * Math.sin(a));
+      const a = s + (i / seg) * (e - s);
+      shape.lineTo(cfg.cx + innerR * Math.cos(a), cfg.cz + innerR * Math.sin(a));
     }
     for (let i = seg; i >= 0; i--) {
-      const a = a0 + (i / seg) * (a1 - a0);
-      shape.lineTo(4 + outerR * Math.cos(a), 4 + outerR * Math.sin(a));
+      const a = s + (i / seg) * (e - s);
+      shape.lineTo(cfg.cx + outerR * Math.cos(a), cfg.cz + outerR * Math.sin(a));
     }
     shape.closePath();
 
@@ -103,6 +129,8 @@ export class TrackPiece {
   }
 
   private addTurnArrows() {
+    const cfg = this.turnCfg!;
+    const isRight = this.data.turnDir === "right";
     const arrowMat = new THREE.MeshStandardMaterial({
       color: 0xffffff,
       transparent: true,
@@ -112,12 +140,14 @@ export class TrackPiece {
     });
 
     const midR = 4;
-    const a0 = Math.PI;
     const count = 3;
     for (let i = 0; i < count; i++) {
-      const a = a0 + ((i + 0.5) / count) * (Math.PI / 2);
-      const px = 4 + midR * Math.cos(a);
-      const pz = 4 + midR * Math.sin(a);
+      const t = (i + 0.5) / count;
+      const a = isRight
+        ? cfg.endAngle - t * (cfg.endAngle - cfg.startAngle)
+        : cfg.startAngle + t * (cfg.endAngle - cfg.startAngle);
+      const px = cfg.cx + midR * Math.cos(a);
+      const pz = cfg.cz + midR * Math.sin(a);
 
       const arrShape = new THREE.Shape();
       const s = 0.5;
@@ -130,27 +160,28 @@ export class TrackPiece {
       const g = new THREE.ShapeGeometry(arrShape);
       const m = new THREE.Mesh(g, arrowMat);
       m.position.set(px, ROAD_THICKNESS + 0.005, pz);
-      m.rotation.y = a - Math.PI;
+      m.rotation.y = isRight ? a : a + Math.PI;
       m.rotation.x = -Math.PI / 2;
       this.mesh.add(m);
     }
   }
 
   private addTurnCurbs() {
+    const cfg = this.turnCfg!;
     const redMat = new THREE.MeshStandardMaterial({ color: 0xff4444 });
     const whiteMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
     const seg = 16;
-    const a0 = Math.PI;
-    const a1 = 3 * Math.PI / 2;
+    const s = cfg.startAngle;
+    const e = cfg.endAngle;
 
     for (const radius of [2, 6]) {
       for (let i = 0; i < seg; i++) {
-        const a1_ = a0 + (i / seg) * (a1 - a0);
-        const a2_ = a0 + ((i + 1) / seg) * (a1 - a0);
-        const aMid = (a1_ + a2_) / 2;
-        const px = 4 + radius * Math.cos(aMid);
-        const pz = 4 + radius * Math.sin(aMid);
-        const arcLen = (a2_ - a1_) * radius;
+        const a1 = s + (i / seg) * (e - s);
+        const a2 = s + ((i + 1) / seg) * (e - s);
+        const aMid = (a1 + a2) / 2;
+        const px = cfg.cx + radius * Math.cos(aMid);
+        const pz = cfg.cz + radius * Math.sin(aMid);
+        const arcLen = (a2 - a1) * radius;
 
         const c = new THREE.Mesh(
           new THREE.BoxGeometry(0.12, 0.06, arcLen),

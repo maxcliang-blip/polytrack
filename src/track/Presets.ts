@@ -35,7 +35,7 @@ export const PRESETS: TrackPreset[] = [
       { type: "straight", x: 24, z: -8, rotation: Math.PI },
       { type: "turn", x: 24, z: 0, rotation: Math.PI },
       { type: "straight", x: 16, z: 0, rotation: -Math.PI / 2 },
-      { type: "turn", x: 8, z: 0, rotation: -Math.PI / 2 },
+      { type: "turn", x: 8, z: 0, rotation: -Math.PI / 2, turnDir: "right" },
       { type: "straight", x: 8, z: 8, rotation: 0 },
       { type: "straight", x: 8, z: 16, rotation: 0 },
       { type: "turn", x: 8, z: 24, rotation: 0 },
