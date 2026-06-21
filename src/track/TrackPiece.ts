@@ -21,20 +21,23 @@ interface TurnConfig {
 }
 
 function getTurnConfig(rot: number, isRight: boolean): TurnConfig {
-  const r = ((rot % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
-  if (!isRight) {
-    if (r < 0.01 || Math.abs(r - Math.PI) < 0.01)
-      return { cx: 4, cz: 4, startAngle: Math.PI, endAngle: 3 * Math.PI / 2 };
-    if (Math.abs(r - Math.PI / 2) < 0.01)
-      return { cx: -4, cz: -4, startAngle: 0, endAngle: Math.PI / 2 };
-    return { cx: 4, cz: -4, startAngle: Math.PI / 2, endAngle: Math.PI };
-  } else {
-    if (r < 0.01 || Math.abs(r - Math.PI) < 0.01)
-      return { cx: -4, cz: 4, startAngle: 3 * Math.PI / 2, endAngle: 2 * Math.PI };
-    if (Math.abs(r - Math.PI / 2) < 0.01)
-      return { cx: 4, cz: -4, startAngle: Math.PI / 2, endAngle: Math.PI };
-    return { cx: 4, cz: 4, startAngle: Math.PI, endAngle: 3 * Math.PI / 2 };
-  }
+  let r = ((rot % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+  if (Math.abs(r - 2 * Math.PI) < 0.01) r = 0;
+  if (r < 0.01)
+    return isRight
+      ? { cx: -4, cz: 4, startAngle: 3 * Math.PI / 2, endAngle: 2 * Math.PI }
+      : { cx: 4, cz: 4, startAngle: Math.PI, endAngle: 3 * Math.PI / 2 };
+  if (Math.abs(r - Math.PI / 2) < 0.01)
+    return isRight
+      ? { cx: -4, cz: -4, startAngle: 0, endAngle: Math.PI / 2 }
+      : { cx: -4, cz: 4, startAngle: 3 * Math.PI / 2, endAngle: 2 * Math.PI };
+  if (Math.abs(r - Math.PI) < 0.01)
+    return isRight
+      ? { cx: 4, cz: -4, startAngle: Math.PI / 2, endAngle: Math.PI }
+      : { cx: -4, cz: -4, startAngle: 0, endAngle: Math.PI / 2 };
+  return isRight
+    ? { cx: 4, cz: 4, startAngle: Math.PI, endAngle: 3 * Math.PI / 2 }
+    : { cx: 4, cz: -4, startAngle: Math.PI / 2, endAngle: Math.PI };
 }
 
 export const ROAD_WIDTH = 4;
