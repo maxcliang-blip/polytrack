@@ -267,8 +267,8 @@ export class TrackPiece {
     const s = cfg.startAngle;
     const e = cfg.endAngle;
     const radii = [
-      { r: 2 - 0.1, wallW: WALL_THICKNESS },
-      { r: 6 + 0.1, wallW: WALL_THICKNESS },
+      { r: 1.8 - 0.1, wallW: WALL_THICKNESS },
+      { r: 6.2 + 0.1, wallW: WALL_THICKNESS },
     ];
     const halfWallH = WALL_HEIGHT / 2;
     const wallMat = isLowEnd
