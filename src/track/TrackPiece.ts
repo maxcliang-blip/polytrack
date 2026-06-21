@@ -92,49 +92,17 @@ export class TrackPiece {
   private buildTurn() {
     this.turnCfg = getTurnConfig(this.data.rotation, this.data.turnDir === "right");
     this.addRoad(WALL_THICKNESS);
-    this.addTurnRoad();
     this.addTurnArrows();
     this.addTurnCurbs();
     this.addTurnWalls();
-  }
-
-  private addTurnRoad() {
-    const cfg = this.turnCfg!;
-    const seg = 20;
-    const innerR = 2;
-    const outerR = 6;
-    const s = cfg.startAngle;
-    const e = cfg.endAngle;
-
-    const shape = new THREE.Shape();
-    shape.moveTo(cfg.cx + innerR * Math.cos(s), cfg.cz + innerR * Math.sin(s));
-    for (let i = 1; i <= seg; i++) {
-      const a = s + (i / seg) * (e - s);
-      shape.lineTo(cfg.cx + innerR * Math.cos(a), cfg.cz + innerR * Math.sin(a));
-    }
-    for (let i = seg; i >= 0; i--) {
-      const a = s + (i / seg) * (e - s);
-      shape.lineTo(cfg.cx + outerR * Math.cos(a), cfg.cz + outerR * Math.sin(a));
-    }
-    shape.closePath();
-
-    const geo = new THREE.ShapeGeometry(shape);
-    const mat = isLowEnd
-      ? new THREE.MeshLambertMaterial({ color: 0x5a5a5a })
-      : new THREE.MeshStandardMaterial({ color: 0x5a5a5a, roughness: 0.9 });
-    const mesh = new THREE.Mesh(geo, mat);
-    mesh.rotation.x = -Math.PI / 2;
-    mesh.position.y = ROAD_THICKNESS + 0.002;
-    mesh.receiveShadow = !isLowEnd;
-    this.mesh.add(mesh);
   }
 
   private addTurnArrows() {
     const cfg = this.turnCfg!;
     const isRight = this.data.turnDir === "right";
     const arrowMat = isLowEnd
-      ? new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.7, side: THREE.DoubleSide, depthWrite: false })
-      : new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.7, side: THREE.DoubleSide, depthWrite: false });
+      ? new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false })
+      : new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false });
 
     const midR = 4;
     const count = 3;
@@ -157,7 +125,7 @@ export class TrackPiece {
       const g = new THREE.ShapeGeometry(arrShape);
       const m = new THREE.Mesh(g, arrowMat);
       m.position.set(px, ROAD_THICKNESS + 0.005, pz);
-      m.rotation.y = isRight ? a : a + Math.PI;
+      m.rotation.y = isRight ? Math.PI - a : -a;
       m.rotation.x = -Math.PI / 2;
       this.mesh.add(m);
     }
