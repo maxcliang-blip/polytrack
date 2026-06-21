@@ -73,7 +73,7 @@ export class TrackPiece {
     this.addTurnCurvedRoad();
     this.addTurnArrows();
     this.addTurnCurbs();
-    this.addWalls();
+    this.addTurnWalls();
   }
 
   private addTurnCurvedRoad() {
@@ -163,6 +163,40 @@ export class TrackPiece {
         c.position.set(px, ROAD_THICKNESS + 0.004, pz);
         c.rotation.y = aMid;
         this.mesh.add(c);
+      }
+    }
+  }
+
+  private addTurnWalls() {
+    const wallMat = isLowEnd
+      ? new THREE.MeshLambertMaterial({ color: 0xcc3333 })
+      : new THREE.MeshStandardMaterial({ color: 0xcc3333, roughness: 0.6 });
+
+    const segCount = 12;
+    const wallHalfH = WALL_HEIGHT / 2;
+    const wallHalfT = WALL_THICKNESS / 2;
+
+    for (const radius of [TURN_INNER_R - WALL_THICKNESS / 2, TURN_OUTER_R + WALL_THICKNESS / 2]) {
+      for (let i = 0; i < segCount; i++) {
+        const a1 = (i / segCount) * (Math.PI / 2);
+        const a2 = ((i + 1) / segCount) * (Math.PI / 2);
+        const aMid = (a1 + a2) / 2;
+        const px = TURN_CENTER_X - radius * Math.cos(aMid);
+        const pz = TURN_CENTER_Z - radius * Math.sin(aMid);
+        const arcLen = (a2 - a1) * radius;
+
+        const wallGeo = new THREE.BoxGeometry(WALL_THICKNESS, WALL_HEIGHT, arcLen);
+        const wall = new THREE.Mesh(wallGeo, wallMat);
+        wall.position.set(px, ROAD_THICKNESS + wallHalfH, pz);
+        wall.rotation.y = aMid;
+        wall.castShadow = !isLowEnd;
+        this.mesh.add(wall);
+
+        this.body.addShape(
+          new CANNON.Box(new CANNON.Vec3(wallHalfT, wallHalfH, arcLen / 2)),
+          new CANNON.Vec3(px, ROAD_THICKNESS + wallHalfH, pz),
+          new CANNON.Quaternion().setFromAxisAngle(new CANNON.Vec3(0, 1, 0), aMid)
+        );
       }
     }
   }
