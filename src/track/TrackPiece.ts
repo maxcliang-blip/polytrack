@@ -105,7 +105,7 @@ export class TrackPiece {
     const isRight = this.data.turnDir === "right";
     const entry = this.data.entryFace ?? inferEntryFace(this.data.rotation, isRight);
     this.turnCfg = getTurnConfig(entry, isRight);
-    this.addRoad(WALL_THICKNESS, undefined, true);
+    this.addRoad(WALL_THICKNESS, undefined, false);
     this.addTurnRoad();
     this.addTurnArrows();
     this.addTurnCurbs();
