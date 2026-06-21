@@ -61,7 +61,7 @@ export class Game {
     document.body.appendChild(this.renderer.domElement);
 
     this.world = new CANNON.World();
-    this.world.gravity.set(0, -15, 0);
+    this.world.gravity.set(0, -12, 0);
     this.world.broadphase = new CANNON.SAPBroadphase(this.world);
     (this.world.solver as unknown as { iterations: number }).iterations = this.lowEnd ? 4 : 10;
     this.world.defaultContactMaterial.friction = 1.0;

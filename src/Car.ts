@@ -4,10 +4,13 @@ import { InputManager } from "./InputManager";
 
 const WHEEL_RADIUS = 0.3;
 const WHEEL_WIDTH = 0.22;
-const CHASSIS_MASS = 150;
-const MAX_FORCE = 3000;
-const MAX_BRAKE = 40;
-const MAX_STEER = 0.5;
+const CHASSIS_MASS = 100;
+const MAX_FORCE = 3500;
+const MAX_BRAKE = 50;
+const MAX_STEER = 0.55;
+const DRIFT_FRICTION = 0.35;
+const NORMAL_FRICTION = 1.0;
+const AIR_BRAKE_TORQUE = 3;
 
 const wheelPositions = [
   { x: -0.7, z: 1.2 },  // front-left  (+Z = forward)
@@ -25,6 +28,9 @@ export class Car {
   private steeringAngle = 0;
   private frozen = false;
   isRunning = false;
+  private wasInAir = false;
+
+  private wheelOptions: { [key: string]: unknown };
 
   constructor(scene: THREE.Scene, world: CANNON.World, input: InputManager) {
     this.input = input;
@@ -37,8 +43,9 @@ export class Car {
     this.chassisBody.addShape(
       new CANNON.Box(new CANNON.Vec3(0.9, 0.2, 1.4))
     );
-    // Start with wheels just touching ground (no initial drop)
     this.chassisBody.position.set(0, 0.8, 0);
+    this.chassisBody.linearDamping = 0.05;
+    this.chassisBody.angularDamping = 0.15;
     world.addBody(this.chassisBody);
 
     this.vehicle = new CANNON.RaycastVehicle({
@@ -48,25 +55,25 @@ export class Car {
       indexForwardAxis: 2,
     });
 
-    const wheelOptions = {
+    this.wheelOptions = {
       radius: WHEEL_RADIUS,
       directionLocal: new CANNON.Vec3(0, -1, 0),
-      suspensionStiffness: 160,
+      suspensionStiffness: 120,
       suspensionRestLength: 0.4,
-      dampingRelaxation: 8,
-      dampingCompression: 12,
-      frictionSlip: 1.2,
-      maxSuspensionForce: 30000,
-      rollInfluence: 0.1,
+      dampingRelaxation: 6,
+      dampingCompression: 10,
+      frictionSlip: NORMAL_FRICTION,
+      maxSuspensionForce: 25000,
+      rollInfluence: 0.08,
       axleLocal: new CANNON.Vec3(-1, 0, 0),
       chassisConnectionPointLocal: new CANNON.Vec3(0, 0, 0),
-      maxSuspensionTravel: 0.3,
+      maxSuspensionTravel: 0.4,
       customSlidingRotationalSpeed: -30,
       useCustomSlidingRotationalSpeed: true,
     };
 
     for (const pos of wheelPositions) {
-      const opts = { ...wheelOptions };
+      const opts = { ...this.wheelOptions };
       opts.chassisConnectionPointLocal = new CANNON.Vec3(pos.x, -0.1, pos.z);
       this.vehicle.addWheel(opts);
     }
@@ -102,7 +109,6 @@ export class Car {
     cabin.castShadow = true;
     this.mesh.add(cabin);
 
-    // Spoiler at rear (-Z)
     const spoilerMat = new THREE.MeshStandardMaterial({
       color: 0x111111,
       roughness: 0.8,
@@ -114,7 +120,6 @@ export class Car {
     spoiler.position.set(0, 0.1, -1.25);
     this.mesh.add(spoiler);
 
-    // Headlights at front (+Z)
     const lightMat = new THREE.MeshStandardMaterial({
       color: 0xffffaa,
       emissive: 0xffffaa,
@@ -129,7 +134,6 @@ export class Car {
       this.mesh.add(light);
     }
 
-    // Taillights at rear (-Z)
     const tailMat = new THREE.MeshStandardMaterial({
       color: 0xff0000,
       emissive: 0xff0000,
@@ -195,18 +199,39 @@ export class Car {
     const engineForce = this.input.forward ? MAX_FORCE : 0;
     const brakeForce = this.input.backward ? MAX_BRAKE : 0;
     const steerInput = this.input.left ? -1 : this.input.right ? 1 : 0;
+    const drifting = this.input.isDown("Space");
 
     const targetSteer = steerInput * MAX_STEER;
-    this.steeringAngle += (targetSteer - this.steeringAngle) * Math.min(1, 15 * dt);
+    this.steeringAngle += (targetSteer - this.steeringAngle) * Math.min(1, 12 * dt);
 
     const wheels = this.vehicle.wheelInfos;
     wheels[0].steering = this.steeringAngle;
     wheels[1].steering = this.steeringAngle;
 
-    for (let i = 0; i < 4; i++) {
-      this.vehicle.applyEngineForce(engineForce, i);
-      this.vehicle.setBrake(brakeForce, i);
+    // Drift: reduce rear friction when Space is held
+    const rearFriction = drifting ? DRIFT_FRICTION : NORMAL_FRICTION;
+    wheels[2].frictionSlip = rearFriction;
+    wheels[3].frictionSlip = rearFriction;
+
+    // Engine force to rear wheels only (RWD like original)
+    this.vehicle.applyEngineForce(engineForce, 2);
+    this.vehicle.applyEngineForce(engineForce, 3);
+    this.vehicle.setBrake(brakeForce, 2);
+    this.vehicle.setBrake(brakeForce, 3);
+    // Front wheels: gentler braking for stability
+    this.vehicle.setBrake(brakeForce * 0.3, 0);
+    this.vehicle.setBrake(brakeForce * 0.3, 1);
+
+    // Air brake: pitch forward when braking in air
+    const airborne = this.chassisBody.position.y > 0.6 &&
+      wheels.every(w => w.worldTransform.position.y > 0.3);
+    if (airborne && this.input.backward) {
+      this.chassisBody.angularVelocity.x -= AIR_BRAKE_TORQUE * dt;
     }
+    if (airborne && this.input.forward) {
+      this.chassisBody.angularVelocity.x += AIR_BRAKE_TORQUE * dt * 0.5;
+    }
+    this.wasInAir = airborne;
 
     for (let i = 0; i < 4; i++) {
       this.vehicle.updateWheelTransform(i);
@@ -244,5 +269,6 @@ export class Car {
       0
     );
     this.isRunning = false;
+    this.wasInAir = false;
   }
 }
