@@ -26,10 +26,10 @@ interface TurnConfig {
 function getTurnConfig(entryFace: EntryFace, isRight: boolean): TurnConfig {
   if (isRight) {
     switch (entryFace) {
-      case "-z": return { cx: -4, cz: 4, startAngle: 3 * Math.PI / 2, endAngle: 2 * Math.PI };
-      case "+x": return { cx: -4, cz: -4, startAngle: 0, endAngle: Math.PI / 2 };
-      case "+z": return { cx: 4, cz: -4, startAngle: Math.PI / 2, endAngle: Math.PI };
-      case "-x": return { cx: 4, cz: 4, startAngle: Math.PI, endAngle: 3 * Math.PI / 2 };
+      case "-z": return { cx: -4, cz: 4, startAngle: 3 * Math.PI / 2, endAngle: Math.PI };
+      case "+x": return { cx: -4, cz: -4, startAngle: 0, endAngle: 3 * Math.PI / 2 };
+      case "+z": return { cx: 4, cz: -4, startAngle: Math.PI / 2, endAngle: 0 };
+      case "-x": return { cx: 4, cz: 4, startAngle: Math.PI, endAngle: Math.PI / 2 };
     }
   } else {
     switch (entryFace) {
@@ -106,7 +106,6 @@ export class TrackPiece {
     const entry = this.data.entryFace ?? inferEntryFace(this.data.rotation, isRight);
     this.turnCfg = getTurnConfig(entry, isRight);
     this.addRoad(WALL_THICKNESS, undefined, false);
-    this.addTurnRoad();
     this.addTurnArrows();
     this.addTurnCurbs();
     this.addTurnWalls();
@@ -135,8 +134,8 @@ export class TrackPiece {
     const roadColor = this.data.type === "start" ? 0x444444 : 0x555555;
     const geo = new THREE.ShapeGeometry(shape);
     const mat = isLowEnd
-      ? new THREE.MeshLambertMaterial({ color: roadColor })
-      : new THREE.MeshStandardMaterial({ color: roadColor, roughness: 0.8 });
+      ? new THREE.MeshLambertMaterial({ color: roadColor, side: THREE.DoubleSide })
+      : new THREE.MeshStandardMaterial({ color: roadColor, roughness: 0.8, side: THREE.DoubleSide });
     const mesh = new THREE.Mesh(geo, mat);
     mesh.rotation.x = -Math.PI / 2;
     mesh.position.y = ROAD_THICKNESS + 0.001;
@@ -156,7 +155,7 @@ export class TrackPiece {
     for (let i = 0; i < count; i++) {
       const t = (i + 0.5) / count;
       const a = isRight
-        ? cfg.endAngle - t * (cfg.endAngle - cfg.startAngle)
+        ? cfg.startAngle - t * (cfg.startAngle - cfg.endAngle)
         : cfg.startAngle + t * (cfg.endAngle - cfg.startAngle);
       const px = cfg.cx + midR * Math.cos(a);
       const pz = cfg.cz + midR * Math.sin(a);
@@ -193,7 +192,7 @@ export class TrackPiece {
         const aMid = (a1 + a2) / 2;
         const px = cfg.cx + radius * Math.cos(aMid);
         const pz = cfg.cz + radius * Math.sin(aMid);
-        const arcLen = (a2 - a1) * radius;
+        const arcLen = Math.abs(a2 - a1) * radius;
 
         const c = new THREE.Mesh(
           new THREE.BoxGeometry(0.12, 0.06, arcLen),
@@ -267,8 +266,8 @@ export class TrackPiece {
     const s = cfg.startAngle;
     const e = cfg.endAngle;
     const radii = [
-      { r: 1.8 - 0.1, wallW: WALL_THICKNESS },
-      { r: 6.2 + 0.1, wallW: WALL_THICKNESS },
+      { r: 2 - 0.1, wallW: WALL_THICKNESS },
+      { r: 6 + 0.1, wallW: WALL_THICKNESS },
     ];
     const halfWallH = WALL_HEIGHT / 2;
     const wallMat = isLowEnd
@@ -282,7 +281,7 @@ export class TrackPiece {
         const aMid = (a1 + a2) / 2;
         const px = cfg.cx + r * Math.cos(aMid);
         const pz = cfg.cz + r * Math.sin(aMid);
-        const arcLen = (a2 - a1) * r;
+        const arcLen = Math.abs(a2 - a1) * r;
 
         const mesh = new THREE.Mesh(
           new THREE.BoxGeometry(wallW, WALL_HEIGHT, arcLen),
